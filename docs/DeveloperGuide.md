@@ -1558,11 +1558,11 @@ Parameters: INDEX (must be a positive integer).`
 
 1. **Unclear error messages**
     - **Problem:** “Invalid index” was ambiguous—was it the person or the reminder index?
-    - **Fix:** Separate messages (“Invalid **person** index”; “Invalid **reminder** index”) and add tests that assert exact wording.
+    - **Fix:** Separate messages (“Invalid person index”; “Invalid reminder index”) and add tests that assert exact wording.
 
 2. **Filter + command order causing index drift**
     - **Problem:** After `archivelist`, running `star` could reference the old (unfiltered) indices.
-    - **Fix:** Resolve indices **after** predicates are applied; standardise a **post-mutation refresh** (reapply predicate + optional sort).
+    - **Fix:** Resolve indices after predicates are applied; standardise a post-mutation refresh (reapply predicate + optional sort).
 
 3. **Older JSON files breaking on new fields**
     - **Problem:** Early saves lacked `reminders`/`notes`, causing deserialisation errors.
@@ -1580,10 +1580,10 @@ Parameters: INDEX (must be a positive integer).`
 **Effort Required**
 
 **Design & Architecture (≈ 1–2 person-days)**
-- Identified where **new responsibilities** live (model vs parser vs UI), keeping AB3 layering intact.
-- Defined **error messaging strategy** (model-centric constraints; consistent messages).
-- Decided on **single-source-of-truth** for people + **view predicates** for Active/Archived/Starred.
-- Chose **tolerant JSON readers** (forward/backward compatibility) + strict writers.
+- Identified where new responsibilities live (model vs parser vs UI), keeping AB3 layering intact.
+- Defined error messaging strategy (model-centric constraints; consistent messages).
+- Decided on single-source-of-truth for people + view predicates for Active/Archived/Starred.
+- Chose tolerant JSON readers (forward/backward compatibility) + strict writers.
 
 **Model & Validation (≈ 1–3 person-days)**
 - Implemented value objects/entities:
@@ -1591,34 +1591,34 @@ Parameters: INDEX (must be a positive integer).`
     - `MeetingNote` (immutable text).
     - `InsurancePolicy` (trim + regex; explicit constraints).
 - Added invariants + unit tests (null/empty, whitespace, format, “close to now” edges).
-- Ensured **immutability** or safe copying for nested lists.
+- Ensured immutability or safe copying for nested lists.
 
 **Logic & Parsing (≈ 2–4 person-days)**
 - New commands & parsers: `reminder`, `rEdit`, `rDelete`, `note`, `nDelete`, `archive`, `unarchive`, `activelist`, `archivelist`, `star`, `unstar`.
-- **Late index resolution** in `Command#execute` to avoid stale indices under filters.
-- Distinct error surfaces for **person index** vs **inner list index**.
+- Late index resolution in `Command#execute` to avoid stale indices under filters.
+- Distinct error surfaces for person index vs inner list index.
 - Tests for parsing ambiguity, missing prefixes, and filtered-list behaviors.
 
 **UI Engineering (multi-panel, scrolling) (≈ 3–5 person-days)**
 - Panels: `ReminderListPanel`, `GeneralReminderListPanel`, `MeetingNoteListPanel`; cards for both.
-- Fixed **nested scroll bugs** (double scrollbars, clipped text, scroll focus jumps):
+- Fixed nested scroll bugs (double scrollbars, clipped text, scroll focus jumps):
     - Avoid `ScrollPane` inside `ListView`.
     - `setWrapText(true)` + `setMinHeight(Region.USE_PREF_SIZE)` on labels; `setFixedCellSize(Region.USE_COMPUTED_SIZE)` on lists.
-    - Single **growth owner** in layouts (no conflicting `vgrow`/`prefHeight`).
-- Reapplied comparator/filter **once** after mutations to reduce layout thrashing.
-- Visual markers for **starred/archived** without breaking virtualization.
+    - Single growth owner in layouts (no conflicting `vgrow`/`prefHeight`).
+- Reapplied comparator/filter once after mutations to reduce layout thrashing.
+- Visual markers for starred/archived without breaking virtualization.
 
 **Storage & Migration (≈ 2–3 person-days)**
 - Adapters: `JsonAdaptedReminder`, `JsonAdaptedMeetingNote`, updated `JsonAdaptedPerson`.
-- **Backward compatibility**: default missing arrays to `[]`, ignore unknown fields; fail only on truly corrupted sub-entries.
-- Round-trip tests: new → JSON → new; **old JSON → new model**; mixed lists with corrupted entries.
+- Backward compatibility: default missing arrays to `[]`, ignore unknown fields; fail only on truly corrupted sub-entries.
+- Round-trip tests: new → JSON → new; old JSON → new model; mixed lists with corrupted entries.
 
 **Testing (≈ 3–5 person-days)**
-- **Model**: value object constraints, equals/hashCode, string forms.
-- **Logic**: success/failure paths, filtered/archived/starred interactions, two-index commands.
-- **Storage**: deserialisation with missing/extra fields, corrupted sub-entries, non-ASCII.
-- **UI** (selective): render of multi-line reminder/note cards; no horizontal overflow; no crash on long texts.
-- Regression tests for **scrolling bugs** (where feasible) and **message wording**.
+- Model: value object constraints, equals/hashCode, string forms.
+- Logic: success/failure paths, filtered/archived/starred interactions, two-index commands.
+- Storage: deserialisation with missing/extra fields, corrupted sub-entries, non-ASCII.
+- UI (selective): render of multi-line reminder/note cards; no horizontal overflow; no crash on long texts.
+- Regression tests for scrolling bugs (where feasible) and message wording.
 
 **Tooling, CI, Docs (≈ 1–2 person-days)**
 - Gradle tasks wired for tests and checks; CI green on model/logic/storage suites.
@@ -1628,29 +1628,28 @@ Parameters: INDEX (must be a positive integer).`
 **Achievements**
 
 **Reliability & Data Safety**
-- **Tolerant JSON readers** mean older saves still load; corrupted sub-items no longer crash the app—users keep the rest of their data.
-- **Late index resolution** eliminates a class of “deleted wrong row” bugs in filtered views.
+- Tolerant JSON readers mean older saves still load; corrupted sub-items no longer crash the app—users keep the rest of their data.
+- Late index resolution eliminates a class of “deleted wrong row” bugs in filtered views.
 
 **Usability & UX**
-- **Clear, targeted errors** (format + time; person vs reminder index) reduce user confusion.
-- **Multi-panel UI** now handles long, wrapped content without clipping or random scrollbars.
-- **Star/Archive indicators** are visible and consistent with list filters.
+- Clear, targeted errors (format + time; person vs reminder index) reduce user confusion.
+- Multi-panel UI now handles long, wrapped content without clipping or random scrollbars.
+- Star/Archive indicators are visible and consistent with list filters.
 
 **Code Quality & Maintainability**
-- Constraints enforced at the **model boundary** (single source of truth).
-- **No duplicated lists** for filters—predicates maintain a coherent view over one dataset.
-- Cohesive adapters (`JsonAdapted*`) isolate serialization concerns, easing future schema changes.
+- Constraints enforced at the model boundary (single source of truth).
+- No duplicated lists for filters—predicates maintain a coherent view over one dataset.
+- Cohesive adapters (`JsonAdapted`) isolate serialization concerns, easing future schema changes.
 
 **Performance & Responsiveness**
-- **Virtualized lists** remain snappy even with many reminders/notes.
-- Post-mutation **one-shot refresh** prevents relayout storms.
+- Virtualised lists remain snappy even with many reminders/notes.
+- Post-mutation one-shot refresh prevents relay-out storms.
 
 **Developer Experience**
-- **Deterministic tests**: reduced flakiness from “close to now” cases.
-- DG/UG now **point to the right classes and flows**, making onboarding easier.
+- Deterministic tests: reduced flakiness from “close to now” cases.
+- DG/UG now point to the right classes and flows, making onboarding easier.
 
 **Why this effort was necessary**
-
-- Agents can **trust** reminders (they won’t silently schedule in the past) and **keep** their old data through releases.
-- The UI supports **realistic, verbose notes** without breaking layout—a must for actual client work.
-- The codebase stays **evolvable**: one dataset, clear boundaries, adapters ready for schema growth.
+- Agents can trust reminders (they won’t silently schedule in the past) and keep their old data through releases.
+- The UI supports realistic, verbose notes without breaking layout—a must for actual client work.
+- The codebase stays evolvable: one dataset, clear boundaries, adapters ready for schema growth.
